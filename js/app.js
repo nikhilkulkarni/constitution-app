@@ -41,6 +41,7 @@ async function loadAssemblyData() {
         // Create a map of state names to their data
         data.states.forEach(state => {
             assemblyData[state.name] = state;
+            console.log(state);
         });
         
         console.log('Assembly data loaded:', Object.keys(assemblyData).length, 'states');
@@ -183,7 +184,7 @@ function initializeAutocomplete() {
             autocompleteContainer,
             GEOAPIFY_API_KEY,
             {
-                placeholder: 'Search Location in India',
+                placeholder: 'Search any location in India',
                 type: 'city',
                 countryCodes: ['in'],
                 limit: 10
@@ -355,12 +356,12 @@ function handleLocationSelected(location) {
     
     // Find the state containing this point
     setTimeout(() => {
-        const stateName = findStateForPoint(lat, lng);
-        
+        //const stateName = findStateForPoint(lat, lng);
+        const stateName = location.properties.state;
         console.log('Found state:', stateName);
         
         if (stateName) {
-            selectState(stateName);
+            selectState(stateName, location);
             
             // Pan to location
             map.setView([lat, lng], 8);
@@ -377,10 +378,11 @@ function handleLocationSelected(location) {
  */
 function findStateForPoint(lat, lng) {
     if (!indiaGeoJson || !indiaGeoJson.features) return null;
-    
+ 
     // Simple point-in-polygon check
     for (const feature of indiaGeoJson.features) {
         if (pointInPolygon([lng, lat], feature.geometry)) {
+            
             return feature.properties.name;
         }
     }
@@ -393,12 +395,15 @@ function findStateForPoint(lat, lng) {
  */
 function pointInPolygon(point, geometry) {
     if (geometry.type === 'Polygon') {
+        
         return isPointInPolygon(point, geometry.coordinates[0]);
     } else if (geometry.type === 'MultiPolygon') {
+        
         return geometry.coordinates.some(polygon => 
             isPointInPolygon(point, polygon[0])
         );
     }
+    
     return false;
 }
 
@@ -425,7 +430,7 @@ function isPointInPolygon(point, polygon) {
 /**
  * Select a state and update the UI
  */
-function selectState(stateName) {
+function selectState(stateName, location) {
     console.log('Selecting state:', stateName);
     
     currentHighlightedState = stateName;
@@ -434,7 +439,7 @@ function selectState(stateName) {
     drawMap();
     
     // Update right panel with state information
-    updateStateInfo(stateName);
+    updateStateInfo(stateName, location);
     
     // Fit bounds to selected state
     if (statesData[stateName]) {
@@ -447,7 +452,7 @@ function selectState(stateName) {
 /**
  * Update the right panel with state information
  */
-function updateStateInfo(stateName) {
+function updateStateInfo(stateName, location) {
     const stateData = assemblyData[stateName];
     const infoTextElement = document.getElementById('info-text');
     const membersCountElement = document.getElementById('members-count');
@@ -459,6 +464,10 @@ function updateStateInfo(stateName) {
                 ${stateName}
             </strong>
             <p>${stateData.explanation}</p>
+            <strong style="color: #2a5298; font-size: 15px; display: block; margin-bottom: 10px;">
+                 </br>Additional information 
+            </strong>
+            <p> The region of ${location.properties.address_line1} was a part of <i>${stateData.oldName}</i> at the time of Independence.</p>
         `;
         
         // Update member count
