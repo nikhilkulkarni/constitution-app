@@ -9,6 +9,7 @@ let assemblyData = {};
 let currentHighlightedState = null;
 let indiaGeoJson = null;
 let autocompleteInstance = null;
+let membersData = {};
 
 // Initialize the application when DOM is ready
 document.addEventListener('DOMContentLoaded', async () => {
@@ -17,6 +18,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         // Load assembly data
         await loadAssemblyData();
+        
+        // Load members data
+        await loadMembersData();
         
         // Initialize map
         initializeMap();
@@ -49,7 +53,28 @@ async function loadAssemblyData() {
         console.error('Error loading assembly data:', error);
     }
 }
-
+/**
+ * Load members data from JSON
+ */
+async function loadMembersData() {
+    try {
+        const response = await fetch('data/members.json');
+        const data = await response.json();
+        
+        // Create a map of province names to their members
+        data.members.forEach(member => {
+            const province = member.province;
+            if (!membersData[province]) {
+                membersData[province] = [];
+            }
+            membersData[province].push(member);
+        });
+        
+        console.log('Members data loaded:', Object.keys(membersData).length, 'provinces');
+    } catch (error) {
+        console.error('Error loading members data:', error);
+    }
+}
 /**
  * Initialize the Leaflet map
  */
@@ -452,7 +477,7 @@ function selectState(stateName, location) {
 /**
  * Update the right panel with state information
  */
-function updateStateInfo(stateName, location) {
+function updateStateInfo(stateName) {
     const stateData = assemblyData[stateName];
     const infoTextElement = document.getElementById('info-text');
     const membersCountElement = document.getElementById('members-count');
@@ -464,17 +489,15 @@ function updateStateInfo(stateName, location) {
                 ${stateName}
             </strong>
             <p>${stateData.explanation}</p>
-            <strong style="color: #2a5298; font-size: 15px; display: block; margin-bottom: 10px;">
-                 </br>Additional information 
-            </strong>
-            <p> The region of ${location.properties.address_line1} was a part of <i>${stateData.oldName}</i> at the time of Independence.</p>
         `;
         
         // Update member count
         if (stateData.members > 0) {
             membersCountElement.innerHTML = `
                 <div>Number of Members in Constituent Assembly</div>
-                <div class="number">${stateData.members}</div>
+                <div class="number" onclick="openMembersModal('${stateData.oldName}', '${stateName}')" style="cursor: pointer;">
+                    ${stateData.members}
+                </div>
             `;
         } else {
             membersCountElement.innerHTML = `
@@ -506,4 +529,95 @@ window.addEventListener('resize', () => {
     if (map) {
         map.invalidateSize();
     }
+/**
+ * Open the members modal and display members for a given province
+ */
+function openMembersModal(oldName, stateName) {
+    console.log('Opening members modal for:', oldName, stateName);
+    
+    const modal = document.getElementById('members-modal');
+    const modalStateNameElement = document.getElementById('modal-state-name');
+    const membersList = document.getElementById('members-list');
+    
+    // Set the state name in the modal header
+    modalStateNameElement.textContent = stateName;
+    
+    // Get members for this province
+    const members = membersData[oldName] || [];
+    
+    console.log('Found members:', members.length);
+    
+    // Clear previous content
+    membersList.innerHTML = '';
+    
+    if (members.length === 0) {
+        membersList.innerHTML = '<div class="no-members-message">No members found for this region.</div>';
+    } else {
+        // Sort members alphabetically by name
+        const sortedMembers = members.sort((a, b) => a.name.localeCompare(b.name));
+        
+        sortedMembers.forEach(member => {
+            const memberItem = document.createElement('div');
+            memberItem.className = 'member-item';
+            
+            // Build member HTML
+            let memberHTML = `<div class="member-name">${member.name}</div>`;
+            
+            // Add summary if available
+            if (member.summary) {
+                memberHTML += `<div class="member-summary">${member.summary}</div>`;
+            }
+            
+            // Add "Read more" link if URL is available
+            if (member.url) {
+                memberHTML += `<a href="${member.url}" target="_blank" class="member-link">Read more →</a>`;
+            }
+            
+            memberItem.innerHTML = memberHTML;
+            membersList.appendChild(memberItem);
+        });
+    }
+    
+    // Show the modal
+    modal.classList.add('active');
+    
+    // Focus on the modal for accessibility
+    modal.focus();
+}
+
+/**
+ * Close the members modal
+ */
+function closeMembersModal() {
+    console.log('Closing members modal');
+    
+    const modal = document.getElementById('members-modal');
+    modal.classList.remove('active');
+    
+    // Return focus to the search input
+    const searchInput = document.querySelector('.autocomplete-input') || 
+                       document.querySelector('#geoapify-autocomplete input');
+    if (searchInput) {
+        searchInput.focus();
+    }
+}
+
+/**
+ * Close modal when clicking outside the modal content
+ */
+document.addEventListener('click', function(event) {
+    const modal = document.getElementById('members-modal');
+    if (event.target === modal) {
+        closeMembersModal();
+    }
+});
+
+/**
+ * Close modal when pressing Escape key
+ */
+document.addEventListener('keydown', function(event) {
+    if (event.key === 'Escape') {
+        closeMembersModal();
+    }
+});
 });
