@@ -353,6 +353,99 @@ async function searchLocations(query, suggestionsContainer, input) {
 }
 
 /**
+ * Open the members modal and display members for a given province
+ */
+function openMembersModal(oldName, stateName) {
+    console.log('Opening members modal for:', oldName, stateName);
+    
+    const modal = document.getElementById('members-modal');
+    const modalStateNameElement = document.getElementById('modal-state-name');
+    const membersList = document.getElementById('members-list');
+    
+    // Set the state name in the modal header
+    modalStateNameElement.textContent = stateName;
+    
+    // Get members for this province
+    const members = membersData[oldName] || [];
+    
+    console.log('Found members:', members.length);
+    
+    // Clear previous content
+    membersList.innerHTML = '';
+    
+    if (members.length === 0) {
+        membersList.innerHTML = '<div class="no-members-message">No members found for this region.</div>';
+    } else {
+        // Sort members alphabetically by name
+        const sortedMembers = members.sort((a, b) => a.name.localeCompare(b.name));
+        
+        sortedMembers.forEach(member => {
+            const memberItem = document.createElement('div');
+            memberItem.className = 'member-item';
+            
+            // Build member HTML
+            let memberHTML = `<div class="member-name">${member.name}</div>`;
+            
+            // Add summary if available
+            if (member.summary) {
+                memberHTML += `<div class="member-summary">${member.summary}</div>`;
+            }
+            
+            // Add "Read more" link if URL is available
+            if (member.url) {
+                memberHTML += `<a href="${member.url}" target="_blank" class="member-link">Read more →</a>`;
+            }
+            
+            memberItem.innerHTML = memberHTML;
+            membersList.appendChild(memberItem);
+        });
+    }
+    
+    // Show the modal
+    modal.classList.add('active');
+    
+    // Focus on the modal for accessibility
+    modal.focus();
+}
+
+/**
+ * Close the members modal
+ */
+function closeMembersModal() {
+    console.log('Closing members modal');
+    
+    const modal = document.getElementById('members-modal');
+    modal.classList.remove('active');
+    
+    // Return focus to the search input
+    const searchInput = document.querySelector('.autocomplete-input') || 
+                       document.querySelector('#geoapify-autocomplete input');
+    if (searchInput) {
+        searchInput.focus();
+    }
+}
+
+/**
+ * Close modal when clicking outside the modal content
+ */
+document.addEventListener('click', function(event) {
+    const modal = document.getElementById('members-modal');
+    if (event.target === modal) {
+        closeMembersModal();
+    }
+});
+
+/**
+ * Close modal when pressing Escape key
+ */
+document.addEventListener('keydown', function(event) {
+    if (event.key === 'Escape') {
+        closeMembersModal();
+    }
+});
+
+
+/**
  * Handle location selection from autocomplete
  */
 function handleLocationSelected(location) {
@@ -529,95 +622,4 @@ window.addEventListener('resize', () => {
     if (map) {
         map.invalidateSize();
     }
-/**
- * Open the members modal and display members for a given province
- */
-function openMembersModal(oldName, stateName) {
-    console.log('Opening members modal for:', oldName, stateName);
-    
-    const modal = document.getElementById('members-modal');
-    const modalStateNameElement = document.getElementById('modal-state-name');
-    const membersList = document.getElementById('members-list');
-    
-    // Set the state name in the modal header
-    modalStateNameElement.textContent = stateName;
-    
-    // Get members for this province
-    const members = membersData[oldName] || [];
-    
-    console.log('Found members:', members.length);
-    
-    // Clear previous content
-    membersList.innerHTML = '';
-    
-    if (members.length === 0) {
-        membersList.innerHTML = '<div class="no-members-message">No members found for this region.</div>';
-    } else {
-        // Sort members alphabetically by name
-        const sortedMembers = members.sort((a, b) => a.name.localeCompare(b.name));
-        
-        sortedMembers.forEach(member => {
-            const memberItem = document.createElement('div');
-            memberItem.className = 'member-item';
-            
-            // Build member HTML
-            let memberHTML = `<div class="member-name">${member.name}</div>`;
-            
-            // Add summary if available
-            if (member.summary) {
-                memberHTML += `<div class="member-summary">${member.summary}</div>`;
-            }
-            
-            // Add "Read more" link if URL is available
-            if (member.url) {
-                memberHTML += `<a href="${member.url}" target="_blank" class="member-link">Read more →</a>`;
-            }
-            
-            memberItem.innerHTML = memberHTML;
-            membersList.appendChild(memberItem);
-        });
-    }
-    
-    // Show the modal
-    modal.classList.add('active');
-    
-    // Focus on the modal for accessibility
-    modal.focus();
-}
-
-/**
- * Close the members modal
- */
-function closeMembersModal() {
-    console.log('Closing members modal');
-    
-    const modal = document.getElementById('members-modal');
-    modal.classList.remove('active');
-    
-    // Return focus to the search input
-    const searchInput = document.querySelector('.autocomplete-input') || 
-                       document.querySelector('#geoapify-autocomplete input');
-    if (searchInput) {
-        searchInput.focus();
-    }
-}
-
-/**
- * Close modal when clicking outside the modal content
- */
-document.addEventListener('click', function(event) {
-    const modal = document.getElementById('members-modal');
-    if (event.target === modal) {
-        closeMembersModal();
-    }
-});
-
-/**
- * Close modal when pressing Escape key
- */
-document.addEventListener('keydown', function(event) {
-    if (event.key === 'Escape') {
-        closeMembersModal();
-    }
-});
 });
