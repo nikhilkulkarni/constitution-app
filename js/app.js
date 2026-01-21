@@ -394,7 +394,7 @@ function openMembersModal(oldName, stateName) {
                 let memberHTML = `<div class="member-name">${member.name}</div>`;
                 
                 //Add Old state name
-                memberHTML += `<div class="member-oldstate">${member.province}</div>`;
+                memberHTML += `<div class="member-oldstate">Representing: ${member.province}</div>`;
 
                 // Add summary if available
                 if (member.summary) {
