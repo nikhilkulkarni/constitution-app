@@ -369,6 +369,9 @@ function openMembersModal(oldName, stateName) {
     const provinceList = oldName.split(',').map(name => name.trim());
     console.log('Found', provinceList.length, ' old states.');
 
+    // Clear previous content
+    membersList.innerHTML = '';
+
     // Get members for this province
     var i=0;
     provinceList.forEach(oldNameStr => {
@@ -376,9 +379,6 @@ function openMembersModal(oldName, stateName) {
      const members = membersData[oldNameStr] || [];
     
         console.log('Found members:', members.length);
-        
-        // Clear previous content
-        membersList.innerHTML = '';
         
         if (members.length === 0) {
             membersList.innerHTML = '<div class="no-members-message">No members found for this region.</div>';
@@ -393,6 +393,9 @@ function openMembersModal(oldName, stateName) {
                 // Build member HTML
                 let memberHTML = `<div class="member-name">${member.name}</div>`;
                 
+                //Add Old state name
+                memberHTML += `<div class="member-oldstate">${member.province}</div>`;
+
                 // Add summary if available
                 if (member.summary) {
                     memberHTML += `<div class="member-summary">${member.summary}</div>`;
