@@ -13,6 +13,7 @@ let membersData = {};
 
 let mapClickEnabled = true; // Flag to enable/disable map click
 let reverseGeocodeCache = {}; // Cache for reverse geocoding results
+let pendingMapClickLocation = null; // Store location from map click
 
 // Initialize the application when DOM is ready
 document.addEventListener('DOMContentLoaded', async () => {
@@ -152,8 +153,9 @@ async function reverseGeocodeCoordinates(lat, lng) {
     }
 }
 
+
 /**
- * Handle map click event
+ * UPDATED: Handle map click event - Shows autocomplete dropdown instead of direct selection
  * @param {L.LeafletMouseEvent} e - Leaflet mouse event with coordinates
  */
 async function handleMapClick(e) {
@@ -162,15 +164,11 @@ async function handleMapClick(e) {
         return;
     }
     
-    // Disable further clicks during processing
     mapClickEnabled = false;
-    
     const lat = e.latlng.lat;
     const lng = e.latlng.lng;
     
     console.log('Map clicked at:', lat, lng);
-    
-    // Show loading indicator
     showLoading(true);
     
     try {
@@ -178,32 +176,28 @@ async function handleMapClick(e) {
         const locationName = await reverseGeocodeCoordinates(lat, lng);
         console.log('Got location name:', locationName);
         
-        // Step 2: Fill search box with location name
+        // Step 2: Store location for later use
+        pendingMapClickLocation = { lat, lng, name: locationName };
+        
+        // Step 3: Fill search box with location name
         const searchInput = document.querySelector('.autocomplete-input') || 
                           document.getElementById('geoapify-autocomplete')?.querySelector('input');
         
         if (searchInput) {
             searchInput.value = locationName;
             console.log('Search box filled with:', locationName);
-        }
-        
-        // Step 3: Find state for this point
-        const stateName = findStateForPoint(lat, lng);
-        
-        if (stateName) {
-            console.log('Found state:', stateName);
             
-            // Step 4: Select the state (this triggers all the UI updates)
-            selectState(stateName, { lat, lng, name: locationName });
-        } else {
-            console.warn('No state found for this location');
-            alert('This location is outside India or could not be identified.');
+            // Step 4: Trigger search to show autocomplete dropdown
+            const event = new Event('input', { bubbles: true });
+            searchInput.dispatchEvent(event);
+            
+            // Focus on input to show dropdown
+            searchInput.focus();
         }
     } catch (error) {
         console.error('Error handling map click:', error);
         alert('Error processing location. Please try again.');
     } finally {
-        // Hide loading indicator and re-enable clicks
         showLoading(false);
         mapClickEnabled = true;
     }
@@ -254,7 +248,7 @@ function drawMap() {
             const isHighlighted = stateName === currentHighlightedState;
             
             return {
-                fillColor: isHighlighted ? '#2a5298' : '#e8e8e8',
+                fillColor: isHighlighted ? '#1a3a52' : '#e8e8e8', // Changed to navy blue
                 weight: 2,
                 opacity: 1,
                 color: '#999',
@@ -268,6 +262,8 @@ function drawMap() {
             
             // Add click event
             layer.on('click', function() {
+            // Stop event propagation so it doesn't trigger map click
+                L.DomEvent.stopPropagation(e);
                 selectState(stateName);
             });
             
@@ -572,45 +568,30 @@ document.addEventListener('keydown', function(event) {
     }
 });
 
-
 /**
- * Handle location selection from autocomplete
+ * UPDATED: Handle location selection from autocomplete
+ * Now zooms to India view and highlights state in navy blue
  */
 function handleLocationSelected(location) {
-    console.log('Handling location selection:', location);
+    console.log('Location selected:', location);
     
-    if (!location) return;
-    
-    let lat, lng;
-    
-    // Handle different location object formats
-    if (location.geometry && location.geometry.coordinates) {
-        lng = location.geometry.coordinates[0];
-        lat = location.geometry.coordinates[1];
-    } else if (location.properties && location.properties.lat && location.properties.lon) {
-        lat = location.properties.lat;
-        lng = location.properties.lon;
-    } else {
-        console.error('Could not extract coordinates from location');
+    if (!location || !location.geometry) {
+        console.error('Invalid location object');
         return;
     }
     
-    console.log('Location coordinates:', lat, lng);
+    const lat = location.geometry.coordinates[1];
+    const lng = location.geometry.coordinates[0];
+    const name = location.properties?.address_line1 || location.properties?.name || 'Unknown';
     
-    // Show loading spinner
     showLoading(true);
     
-    // Find the state containing this point
     setTimeout(() => {
-        //const stateName = findStateForPoint(lat, lng);
-        const stateName = location.properties.state;
-        console.log('Found state:', stateName);
+        const stateName = findStateForPoint(lat, lng);
         
         if (stateName) {
-            selectState(stateName, location);
-            
-            // Pan to location
-            map.setView([lat, lng], 8);
+            // Call updated selectState function
+            selectStateWithIndiaZoom(stateName, { lat, lng, name });
         } else {
             alert('Could not determine the state for this location.');
         }
@@ -696,6 +677,27 @@ function selectState(stateName, location) {
 }
 
 /**
+ * NEW: Select a state and zoom to India view with state highlighted
+ * This is used when user selects from autocomplete (either manual or map click)
+ */
+function selectStateWithIndiaZoom(stateName, location) {
+    console.log('Selecting state with India zoom:', stateName);
+    
+    currentHighlightedState = stateName;
+    
+    // Redraw map to highlight selected state
+    drawMap();
+    
+    // Update right panel with state information
+    updateStateInfo(stateName, location);
+    
+    // NEW: Zoom to India view (default) instead of state bounds
+    map.setView([20.5937, 78.9629], 5);
+    
+    console.log('Map zoomed to India view with', stateName, 'highlighted');
+}
+
+/**
  * Update the right panel with state information
  */
 function updateStateInfo(stateName) {
@@ -706,7 +708,7 @@ function updateStateInfo(stateName) {
     if (stateData) {
         // Update explanation text
         infoTextElement.innerHTML = `
-            <strong style="color: #2a5298; font-size: 15px; display: block; margin-bottom: 10px;">
+            <strong style="color: #1a3a52; font-size: 15px; display: block; margin-bottom: 10px;">
                 ${stateName}
             </strong>
             <p>${stateData.explanation}</p>
