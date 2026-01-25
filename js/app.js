@@ -581,6 +581,7 @@ function handleLocationSelected(location) {
         return;
     }
     
+    
     const lat = location.geometry.coordinates[1];
     const lng = location.geometry.coordinates[0];
     const name = location.properties?.address_line1 || location.properties?.name || 'Unknown';
@@ -588,8 +589,8 @@ function handleLocationSelected(location) {
     showLoading(true);
     
     setTimeout(() => {
-        const stateName = findStateForPoint(lat, lng);
-        
+      //  const stateName = findStateForPoint(lat, lng);
+        const stateName = location.properties.state;
         if (stateName) {
             // Call updated selectState function
             selectStateWithIndiaZoom(stateName, { lat, lng, name });
