@@ -11,6 +11,9 @@ let indiaGeoJson = null;
 let autocompleteInstance = null;
 let membersData = {};
 
+let mapClickEnabled = true; // Flag to enable/disable map click
+let reverseGeocodeCache = {}; // Cache for reverse geocoding results
+
 // Initialize the application when DOM is ready
 document.addEventListener('DOMContentLoaded', async () => {
     try {
@@ -90,11 +93,121 @@ function initializeMap() {
         maxZoom: 19,
         minZoom: 4
     }).addTo(map);
+
+    // Add click event listener to map
+    map.on('click', handleMapClick);
     
+    // Add visual feedback - change cursor to pointer
+    map.getContainer().style.cursor = 'pointer';
+
     // Load India GeoJSON
     loadIndiaGeoJson();
 }
 
+/**
+ * Reverse geocode coordinates to get location name using GeoApify API
+ * @param {number} lat - Latitude
+ * @param {number} lng - Longitude
+ * @returns {Promise<string>} - Location name
+ */
+async function reverseGeocodeCoordinates(lat, lng) {
+    try {
+        // Check cache first
+        const cacheKey = `${lat.toFixed(4)},${lng.toFixed(4)}`;
+        if (reverseGeocodeCache[cacheKey]) {
+            console.log('Using cached location:', reverseGeocodeCache[cacheKey]);
+            return reverseGeocodeCache[cacheKey];
+        }
+        
+        // Call GeoApify reverse geocoding API
+        const url = `https://api.geoapify.com/v1/geocode/reverse?lat=${lat}&lon=${lng}&apiKey=${GEOAPIFY_API_KEY}`;
+        
+        const response = await fetch(url );
+        const data = await response.json();
+        
+        if (data.features && data.features.length > 0) {
+            const feature = data.features[0];
+            const properties = feature.properties;
+            
+            // Try to get city name, then fall back to other properties
+            let locationName = properties.city || 
+                             properties.town || 
+                             properties.village || 
+                             properties.county || 
+                             properties.state ||
+                             properties.address_line1 ||
+                             'Unknown Location';
+            
+            // Cache the result
+            reverseGeocodeCache[cacheKey] = locationName;
+            
+            console.log('Reverse geocoded location:', locationName);
+            return locationName;
+        }
+        
+        return 'Unknown Location';
+    } catch (error) {
+        console.error('Error reverse geocoding:', error);
+        return 'Unknown Location';
+    }
+}
+
+/**
+ * Handle map click event
+ * @param {L.LeafletMouseEvent} e - Leaflet mouse event with coordinates
+ */
+async function handleMapClick(e) {
+    if (!mapClickEnabled) {
+        console.log('Map click disabled during processing');
+        return;
+    }
+    
+    // Disable further clicks during processing
+    mapClickEnabled = false;
+    
+    const lat = e.latlng.lat;
+    const lng = e.latlng.lng;
+    
+    console.log('Map clicked at:', lat, lng);
+    
+    // Show loading indicator
+    showLoading(true);
+    
+    try {
+        // Step 1: Reverse geocode to get location name
+        const locationName = await reverseGeocodeCoordinates(lat, lng);
+        console.log('Got location name:', locationName);
+        
+        // Step 2: Fill search box with location name
+        const searchInput = document.querySelector('.autocomplete-input') || 
+                          document.getElementById('geoapify-autocomplete')?.querySelector('input');
+        
+        if (searchInput) {
+            searchInput.value = locationName;
+            console.log('Search box filled with:', locationName);
+        }
+        
+        // Step 3: Find state for this point
+        const stateName = findStateForPoint(lat, lng);
+        
+        if (stateName) {
+            console.log('Found state:', stateName);
+            
+            // Step 4: Select the state (this triggers all the UI updates)
+            selectState(stateName, { lat, lng, name: locationName });
+        } else {
+            console.warn('No state found for this location');
+            alert('This location is outside India or could not be identified.');
+        }
+    } catch (error) {
+        console.error('Error handling map click:', error);
+        alert('Error processing location. Please try again.');
+    } finally {
+        // Hide loading indicator and re-enable clicks
+        showLoading(false);
+        mapClickEnabled = true;
+    }
+}
 /**
  * Load India GeoJSON from the provided source
  */
