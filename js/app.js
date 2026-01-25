@@ -422,7 +422,7 @@ function openMembersModal(oldName, stateName) {
             // 🔹 Reset scroll position inside the modal content
 
             if (document.getElementById('modal-body')) {
-                document.getElementById('modal-body').scrollTop();
+                document.getElementById('modal-body').scrollTop = 0;
             }
         }   
     });
