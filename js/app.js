@@ -49,7 +49,7 @@ async function loadAssemblyData() {
         // Create a map of state names to their data
         data.states.forEach(state => {
             assemblyData[state.name] = state;
-            console.log(state);
+            //console.log(state);
         });
         
         console.log('Assembly data loaded:', Object.keys(assemblyData).length, 'states');
@@ -96,7 +96,7 @@ function initializeMap() {
     }).addTo(map);
 
     // Add click event listener to map
-    map.on('click', handleMapClick);
+    //map.on('click', handleMapClick);
     
     // Add visual feedback - change cursor to pointer
     map.getContainer().style.cursor = 'pointer';
@@ -350,7 +350,7 @@ function initializeSimpleAutocomplete() {
     // Create input element
     const input = document.createElement('input');
     input.type = 'text';
-    input.placeholder = 'Search Location in India';
+    input.placeholder = 'Search any location in India or click on the map';
     input.className = 'autocomplete-input';
     input.style.cssText = `
         width: 100%;
@@ -659,7 +659,7 @@ function isPointInPolygon(point, polygon) {
  * Select a state and update the UI
  */
 function selectState(stateName, location) {
-    console.log('Selecting state:', stateName);
+    //console.log('Selecting state:', stateName);
     
     currentHighlightedState = stateName;
     
