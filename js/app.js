@@ -261,7 +261,7 @@ function drawMap() {
             const stateName = feature.properties.name;
             
             // Add click event
-            layer.on('click', function() {
+            layer.on('click', function(e) {
             // Stop event propagation so it doesn't trigger map click
                 L.DomEvent.stopPropagation(e);
                 selectState(stateName);
